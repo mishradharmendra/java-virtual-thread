@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.java.learning</groupId>
+  <artifactId>java-learning</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>Smart Warehouse — Concurrency Comparison</name>
+  <description>
+    Side-by-side producer/consumer simulation contrasting the classic ExecutorService +
+    platform-thread model with Java 26 virtual threads and structured concurrency.
+  </description>
+
+  <properties>
+    <maven.compiler.release>26</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+    <!-- StructuredTaskScope is still a preview API in JDK 26. -->
+    <preview.arg>--enable-preview</preview.arg>
+
+    <junit.version>5.11.4</junit.version>
+    <surefire.version>3.5.2</surefire.version>
+    <exec.plugin.version>3.5.0</exec.plugin.version>
+    <compiler.plugin.version>3.13.0</compiler.plugin.version>
+
+    <main.class>com.java.learning.Main</main.class>
+    <!-- Arguments forwarded to the simulation by exec:exec; override on the command line. -->
+    <sim.args></sim.args>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>${project.artifactId}</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${compiler.plugin.version}</version>
+        <configuration>
+          <compilerArgs>
+            <arg>${preview.arg}</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.version}</version>
+        <configuration>
+          <!-- Preview features must be re-enabled at test runtime, not just at compile time. -->
+          <argLine>${preview.arg}</argLine>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec.plugin.version}</version>
+        <configuration>
+          <!--
+            exec:exec (not exec:java) because the simulation loads preview-marked classes, and the
+            JVM only accepts those when it was itself started with the preview flag. Maven's own JVM
+            has not been, so we must fork a fresh one.
+
+            Run with:  mvn -q compile exec:exec -Dsim.args="modern"
+          -->
+          <executable>${java.home}/bin/java</executable>
+          <commandlineArgs>${preview.arg} -classpath %classpath ${main.class} ${sim.args}</commandlineArgs>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>${main.class}</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
